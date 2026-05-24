@@ -4,3 +4,9 @@
   padding: 24px;
   background: #f5f7fa;
 }
+
+@media (max-width: 600px) {
+  .content {
+    padding: 12px;
+  }
+}
