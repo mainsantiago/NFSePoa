@@ -1,0 +1,18 @@
+{
+  "/ws-proxy/dcl": {
+    "target": "https://nfe.etransparencia.com.br/sp.poa/webservice",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/ws-proxy/dcl": "/aws_dcl.aspx"
+    }
+  },
+  "/ws-proxy/nfe": {
+    "target": "https://nfe.etransparencia.com.br/sp.poa/webservice",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/ws-proxy/nfe": "/aws_nfe.aspx"
+    }
+  }
+}

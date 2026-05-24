@@ -1,0 +1,228 @@
+<div class="emissao-page">
+
+  <!-- ═══════ STEP 1: UPLOAD CSV ═══════ -->
+  @if (step() === 'upload') {
+    <div class="upload-section">
+      <div class="page-header">
+        <mat-icon class="header-icon">note_add</mat-icon>
+        <h2>Emissão de NFS-e (DPS)</h2>
+        <p class="subtitle">
+          Envio de lote de DPS via PROCESSARPS — Poá/SP
+        </p>
+      </div>
+
+      <!-- Drop Zone -->
+      <div
+        class="drop-zone"
+        [class.drag-over]="dragOver()"
+        [class.has-file]="csvFile()"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)">
+
+        @if (!csvFile()) {
+          <mat-icon class="drop-icon">upload_file</mat-icon>
+          <h3>Arraste o arquivo CSV aqui</h3>
+          <p>ou</p>
+          <div class="drop-actions">
+            <button mat-flat-button color="primary" (click)="fileInput.click()" class="btn-select">
+              <mat-icon>folder_open</mat-icon>
+              Selecionar Arquivo
+            </button>
+            <button mat-stroked-button (click)="downloadModelo()" class="btn-modelo">
+              <mat-icon>file_download</mat-icon>
+              Baixar Modelo CSV
+            </button>
+          </div>
+          <input #fileInput type="file" accept=".csv" hidden (change)="onFileSelected($event)">
+          <span class="hint">
+            CSV separado por ; ou , — cada linha = 1 DPS com dados do tomador
+          </span>
+        } @else {
+          <mat-icon class="drop-icon success">check_circle</mat-icon>
+          <h3>{{ csvFile()!.name }}</h3>
+          <p class="file-info">
+            {{ (csvFile()!.size / 1024).toFixed(1) }} KB —
+            {{ totalDps() }} DPS(s)
+            — Total: R$ {{ totalValor() | number:'1.2-2' }}
+          </p>
+          <button mat-stroked-button (click)="novaEmissao()" class="btn-change">
+            <mat-icon>swap_horiz</mat-icon>
+            Trocar Arquivo
+          </button>
+        }
+      </div>
+
+      @if (csvErrors().length > 0) {
+        <div class="errors-panel">
+          <mat-icon>warning</mat-icon>
+          <div>
+            @for (err of csvErrors(); track $index) {
+              <p>{{ err }}</p>
+            }
+          </div>
+        </div>
+      }
+
+      @if (parsedRows().length > 0) {
+        <mat-card appearance="outlined" class="preview-card">
+          <div class="preview-header">
+            <mat-icon>table_chart</mat-icon>
+            <span>Pré-visualização ({{ parsedRows().length }} DPS)</span>
+          </div>
+          <div class="preview-table-wrapper">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Nº DPS</th>
+                  <th>Tomador</th>
+                  <th>CPF/CNPJ Tom.</th>
+                  <th>Serviço</th>
+                  <th>Valor</th>
+                  <th>Alíq. ISS</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of parsedRows(); track row.linha) {
+                  <tr>
+                    <td>{{ row.linha }}</td>
+                    <td>{{ row.numRps || '—' }}</td>
+                    <td>{{ row.razSocTom || '—' }}</td>
+                    <td>{{ row.cpfCnpjTom || '—' }}</td>
+                    <td>{{ row.codSrv || '—' }}</td>
+                    <td class="valor">R$ {{ (row.vlNfs || 0) | number:'1.2-2' }}</td>
+                    <td>{{ row.alqIss || 0 }}%</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </mat-card>
+
+        <div class="action-bar">
+          <button mat-flat-button color="primary" class="btn-processar"
+                  (click)="iniciarProcessamento()">
+            <mat-icon>send</mat-icon>
+            Enviar {{ parsedRows().length }} DPS(s)
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ═══════ STEP 2: PROCESSANDO / CONCLUÍDO ═══════ -->
+  @if (step() === 'processando' || step() === 'concluido') {
+    <div class="processing-section">
+      <div class="page-header compact">
+        <h2>
+          @if (step() === 'processando' && processing()) {
+            <mat-spinner diameter="24" strokeWidth="3" class="inline-spinner"></mat-spinner>
+            Enviando Lote de DPS...
+          } @else if (step() === 'concluido') {
+            <mat-icon class="header-icon-inline done">task_alt</mat-icon>
+            Processamento Concluído
+          }
+        </h2>
+      </div>
+
+      @if (processing()) {
+        <mat-progress-bar mode="indeterminate" class="progress-bar"></mat-progress-bar>
+      }
+
+      <div class="stats-row">
+        <div class="stat-chip total">
+          <mat-icon>list</mat-icon>
+          <span>{{ totalLinhas() }} Total</span>
+        </div>
+        <div class="stat-chip sucesso">
+          <mat-icon>check_circle</mat-icon>
+          <span>{{ totalSucesso() }} Sucesso</span>
+        </div>
+        <div class="stat-chip erro">
+          <mat-icon>error</mat-icon>
+          <span>{{ totalErro() }} Erro</span>
+        </div>
+        <div class="stat-chip pendente">
+          <mat-icon>schedule</mat-icon>
+          <span>{{ totalPendente() }} Pendente</span>
+        </div>
+      </div>
+
+      <mat-card appearance="outlined" class="table-card">
+        <table mat-table [dataSource]="processItems()" class="process-table">
+
+          <ng-container matColumnDef="linha">
+            <th mat-header-cell *matHeaderCellDef>Linha</th>
+            <td mat-cell *matCellDef="let item">
+              <span class="line-num">{{ item.linha }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="tomador">
+            <th mat-header-cell *matHeaderCellDef>Tomador</th>
+            <td mat-cell *matCellDef="let item">
+              <div class="dest-info">
+                <strong>{{ item.razSocTom }}</strong>
+                <small>{{ item.cpfCnpjTom }}</small>
+              </div>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="numRps">
+            <th mat-header-cell *matHeaderCellDef>Nº DPS</th>
+            <td mat-cell *matCellDef="let item">{{ item.numRps }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="codSrv">
+            <th mat-header-cell *matHeaderCellDef>Serviço</th>
+            <td mat-cell *matCellDef="let item">{{ item.codSrv }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="valor">
+            <th mat-header-cell *matHeaderCellDef>Valor</th>
+            <td mat-cell *matCellDef="let item">
+              <strong>R$ {{ item.vlNfs | number:'1.2-2' }}</strong>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let item">
+              <span class="status-badge" [ngClass]="getStatusClass(item.status)">
+                <mat-icon class="status-icon">{{ getStatusIcon(item.status) }}</mat-icon>
+                {{ item.status | titlecase }}
+              </span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="mensagem">
+            <th mat-header-cell *matHeaderCellDef>Detalhe</th>
+            <td mat-cell *matCellDef="let item">
+              <span class="msg-text">{{ item.mensagem }}</span>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+              [class.row-sucesso]="row.status === 'sucesso'"
+              [class.row-erro]="row.status === 'erro'"></tr>
+        </table>
+      </mat-card>
+
+      <div class="action-bar">
+        @if (step() === 'concluido') {
+          <button mat-flat-button color="primary" class="btn-exportar" (click)="exportarResultados()">
+            <mat-icon>download</mat-icon>
+            Exportar Resultados (CSV)
+          </button>
+          <button mat-stroked-button class="btn-nova" (click)="novaEmissao()">
+            <mat-icon>replay</mat-icon>
+            Nova Emissão
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+</div>

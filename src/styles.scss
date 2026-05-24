@@ -1,1 +1,64 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+html {
+  height: 100%;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Inter,
+      density: 0,
+    )
+  );
+}
+
+body {
+  color-scheme: light;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b0bec5;
+  border-radius: 3px;
+
+  &:hover {
+    background: #78909c;
+  }
+}
+
+/* Utilitários globais */
+.mat-mdc-card {
+  border-radius: 16px !important;
+}
+
+.mat-mdc-flat-button, .mat-mdc-raised-button {
+  border-radius: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.mat-mdc-form-field {
+  font-size: 0.9rem;
+}
+
+mat-divider {
+  border-color: #eceff1 !important;
+}
